@@ -38,6 +38,7 @@ class CuratorCmd():
         self.curator_settings = {'delete': {}}
         self.logger = create_logger(__name__)
         self.curator_log_level = os.getenv('CURATOR_LOG_LEVEL', 'ERROR')
+        self.index_disk_space_threshold = os.getenv('INDEX_DISK_SPACE_THRESHOLD', '60')
         self.commands = []
 
 
@@ -106,6 +107,7 @@ class CuratorCmd():
                 + ' --timeout ' + os.getenv('CURATOR_TIMEOUT', 30)
 
     def build_cmd(self):
+        self.logger.info("Building curator command")
         default_command = self.default_index()
         con_info = self.connection_info()
         for project in self.conf:
@@ -134,7 +136,14 @@ class CuratorCmd():
                 else:
                     if operation not in self.allowed_params:
                         self.logger.error('an unsupported or unknown operation ' + operation + ' was provided... Record skipped')
-        
+
+        disk_space_delete_cmd = '/usr/bin/curator --loglevel ' + self.curator_log_level + ' ' + self.connection_info() \
+                                + ' delete ' +'--disk-space ' + self.index_disk_space_threshold +\
+                                ' indices --timestring %Y.%m.%d'
+        self.commands.append(disk_space_delete_cmd)
+        print "Default command = ", default_command
+        print "Disk space delete command = ", disk_space_delete_cmd
+
         self.commands.append(default_command)
         for operation in self.curator_settings:
             for unit in self.curator_settings[operation]:
@@ -144,12 +153,14 @@ class CuratorCmd():
                     # regex escape any regex special characters in the project name (there shouldn't be, but just in case)
                     # shellquote to protect any shell special chars in the constructed regex
                     tab_cmd = '/usr/bin/curator --loglevel ' + self.curator_log_level + ' ' \
-                            + con_info + ' ' + operation + ' indices --timestring %Y.%m.%d' \
+                            + con_info + ' ' + operation + ' --disk-space ' + self.index_disk_space_threshold +\
+                              ' indices --timestring %Y.%m.%d' \
                             + ' --older-than ' + str(value) + ' --time-unit ' + unit \
                             + ' --regex ' \
                             + shellquote('(' + '|'.join(map(
                                 lambda project: project,
                                 self.curator_settings[operation][unit][value])) + ')')
+                    self.logger.debug("Curator cmd: ", tab_cmd)
                     self.commands.append(tab_cmd)
                 
     def build_cmd_list(self):

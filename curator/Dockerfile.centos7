@@ -18,6 +18,7 @@ ENV HOME=/opt/app-root/src \
     CURATOR_LOG_LEVEL=ERROR \
     CURATOR_SCRIPT_LOG_LEVEL=INFO \
     CURATOR_VER=3.5.1 \
+    INDEX_DISK_SPACE_THRESHOLD=20 \
     CURATOR_TIMEOUT=300
 
 LABEL io.k8s.description="Curator elasticsearch container for elasticsearch deletion/archival" \
